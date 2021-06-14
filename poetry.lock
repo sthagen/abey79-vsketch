@@ -819,7 +819,7 @@ glcontext = ">=2,<3"
 
 [[package]]
 name = "multiprocess"
-version = "0.70.12"
+version = "0.70.12.2"
 description = "better multiprocessing and multithreading in python"
 category = "main"
 optional = false
@@ -1280,7 +1280,7 @@ py = {version = "*", markers = "implementation_name == \"pypy\""}
 
 [[package]]
 name = "qasync"
-version = "0.15.0"
+version = "0.16.0"
 description = "Implementation of the PEP 3156 Event-Loop with Qt."
 category = "main"
 optional = false
@@ -1424,17 +1424,17 @@ python-versions = "*"
 
 [[package]]
 name = "sphinx"
-version = "3.5.4"
+version = "4.0.2"
 description = "Python documentation generator"
 category = "main"
 optional = true
-python-versions = ">=3.5"
+python-versions = ">=3.6"
 
 [package.dependencies]
 alabaster = ">=0.7,<0.8"
 babel = ">=1.3"
 colorama = {version = ">=0.3.5", markers = "sys_platform == \"win32\""}
-docutils = ">=0.12,<0.17"
+docutils = ">=0.14,<0.18"
 imagesize = "*"
 Jinja2 = ">=2.3"
 packaging = "*"
@@ -1766,7 +1766,7 @@ jupyterlab = ["jupyterlab", "jupyter_nbextensions_configurator", "jupyterlab", "
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7, !=3.9.0, <3.10"
-content-hash = "7d94b6b530839be4df85b4b8c1841a8ceab953bc5510cdb898931cb36def6ae0"
+content-hash = "53baab0adf3b2b2693824e647f44a1c0b1135eb4efac1351d73356d6998ea789"
 
 [metadata.files]
 alabaster = [
@@ -2207,19 +2207,19 @@ moderngl = [
     {file = "moderngl-5.6.4.tar.gz", hash = "sha256:8c6d04559f5e3bf75a18525cd46d213c0f3a8409363718978e6de691bdb551fb"},
 ]
 multiprocess = [
-    {file = "multiprocess-0.70.12-cp27-cp27m-macosx_10_12_x86_64.whl", hash = "sha256:19f74377786aa6be34bdee8890f7800fe141079f22257318aa30aabe8b208a98"},
-    {file = "multiprocess-0.70.12-cp27-cp27m-manylinux1_i686.whl", hash = "sha256:4f55a1468c916dd0aa37314c3126ee5a5ecf221340c097d2862ffcfa8c1c33e1"},
-    {file = "multiprocess-0.70.12-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:fd60cc4853382937d1811945bb9cf5d2da1d030adf6fb3b84e9b84af0a49dad6"},
-    {file = "multiprocess-0.70.12-cp27-cp27m-win32.whl", hash = "sha256:ff0491b2bf8a090c007575cd953d6609301b280e45c430abce2be3c92e74ebfc"},
-    {file = "multiprocess-0.70.12-cp27-cp27m-win_amd64.whl", hash = "sha256:b5f061bd10154d5069e4f95276a1f9fab397015128c9ae2f7635ccc454e9185c"},
-    {file = "multiprocess-0.70.12-pp27-none-any.whl", hash = "sha256:a630d8441f108ad6aa973bc3f308161a4920b97fb562aea6eddf5793ce588a48"},
-    {file = "multiprocess-0.70.12-pp36-none-any.whl", hash = "sha256:4b1f2e78da216c8099b0a5edeac03c28bde6e21556699f62d4322ac1041238b8"},
-    {file = "multiprocess-0.70.12-pp37-none-any.whl", hash = "sha256:3ca559b8da9cf4060610c32d02e8c3100574005e51fa3bc4884a099ec6b33f79"},
-    {file = "multiprocess-0.70.12-py36-none-any.whl", hash = "sha256:56220afc52254e25d2698149e267247f4b39bc43e036306db138db080bfb2476"},
-    {file = "multiprocess-0.70.12-py37-none-any.whl", hash = "sha256:48f464a28546830584255f34e35efa6bd7abafe1bcbe82f5c2ed7b9a52cb817b"},
-    {file = "multiprocess-0.70.12-py38-none-any.whl", hash = "sha256:2b7d63c9efd959d288c4651261e04499d6431347797bce9dfae50a2781aa6aeb"},
-    {file = "multiprocess-0.70.12-py39-none-any.whl", hash = "sha256:c0fa97754295874627876b5195a04c338b2aff58dcb788decdc71c1a710144d0"},
-    {file = "multiprocess-0.70.12.zip", hash = "sha256:853d02581a03b3bf7872f5e997d2e2b62e177c22a9d05158dc96a675854f2b60"},
+    {file = "multiprocess-0.70.12.2-cp27-cp27m-macosx_10_12_x86_64.whl", hash = "sha256:35d41e410ca2a32977a483ae1f40f86b193b45cecf85567c2fae402fb8bf172e"},
+    {file = "multiprocess-0.70.12.2-cp27-cp27m-manylinux1_i686.whl", hash = "sha256:9a02237eae21975155c816883479f72e239d16823a6bc063173d59acec9bcf41"},
+    {file = "multiprocess-0.70.12.2-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:f12a939cd2f01d0a900e7ef2aaee3c351a49fd2297d7f760b537af22727561b8"},
+    {file = "multiprocess-0.70.12.2-cp27-cp27m-win32.whl", hash = "sha256:be3ad3eaf204abc646d85e70e41244f66d88200628a0ab867c8fc206b97cedbf"},
+    {file = "multiprocess-0.70.12.2-cp27-cp27m-win_amd64.whl", hash = "sha256:c85ffc38c50c5a4f32f3f3c1a284725b7b5040188f254eba6e572c53d3da525b"},
+    {file = "multiprocess-0.70.12.2-pp27-none-any.whl", hash = "sha256:a9f58945edb234591684c0a181b744a3231643814ef3a8f47cea9a2073b4b2bb"},
+    {file = "multiprocess-0.70.12.2-pp36-none-any.whl", hash = "sha256:0e0a5ae4bd84e4c22baddf824d3b8168214f8c1cce51e2cb080421cb1f7b04d1"},
+    {file = "multiprocess-0.70.12.2-pp37-none-any.whl", hash = "sha256:916a314a1e0f3454033d59672ba6181fa45948ab1091d68cdd479258576e7b27"},
+    {file = "multiprocess-0.70.12.2-py36-none-any.whl", hash = "sha256:b3f866f7d9c7acc1a9cb1b6063a29f5cb140ff545b35b71fd4bfdac6f19d75fa"},
+    {file = "multiprocess-0.70.12.2-py37-none-any.whl", hash = "sha256:6aa67e805e50b6e9dfc56dd0f0c85ac3409e6791d4ec5405c5f9bc0a47d745a4"},
+    {file = "multiprocess-0.70.12.2-py38-none-any.whl", hash = "sha256:85941e650c277af44fc82e3e97faacb920e5ce3615238b540cbad4012d6f60e9"},
+    {file = "multiprocess-0.70.12.2-py39-none-any.whl", hash = "sha256:6f812a1d3f198b7cacd63983f60e2dc1338bd4450893f90c435067b5a3127e6f"},
+    {file = "multiprocess-0.70.12.2.zip", hash = "sha256:206bb9b97b73f87fec1ed15a19f8762950256aa84225450abc7150d02855a083"},
 ]
 mypy = [
     {file = "mypy-0.902-cp35-cp35m-macosx_10_9_x86_64.whl", hash = "sha256:3f12705eabdd274b98f676e3e5a89f247ea86dc1af48a2d5a2b080abac4e1243"},
@@ -2509,8 +2509,8 @@ pyzmq = [
     {file = "pyzmq-22.1.0.tar.gz", hash = "sha256:7040d6dd85ea65703904d023d7f57fab793d7ffee9ba9e14f3b897f34ff2415d"},
 ]
 qasync = [
-    {file = "qasync-0.15.0-py3-none-any.whl", hash = "sha256:00ac2e3a042875087ce09819d2a439bc438facaeaf6af8ab490a18ab5aa69833"},
-    {file = "qasync-0.15.0.tar.gz", hash = "sha256:cae92940a71d94ac9fbb83342a5bf21d357387504d6054bf5033e6fec79b7fd6"},
+    {file = "qasync-0.16.0-py3-none-any.whl", hash = "sha256:3b87d6d0ff26ec46516c25d4dd2fddb51b6cf30e21eb5173333cb95885efc433"},
+    {file = "qasync-0.16.0.tar.gz", hash = "sha256:65bb1fb67734e34acd9ec03c4e4f30cd3699d81df65416bf214f122a242a20b1"},
 ]
 qtconsole = [
     {file = "qtconsole-5.1.0-py3-none-any.whl", hash = "sha256:3a2adecc43ff201a08972fb2179df22e7b3a08d71b9ed680f46ad1bfd4fb9132"},
@@ -2637,8 +2637,8 @@ snowballstemmer = [
     {file = "snowballstemmer-2.1.0.tar.gz", hash = "sha256:e997baa4f2e9139951b6f4c631bad912dfd3c792467e2f03d7239464af90e914"},
 ]
 sphinx = [
-    {file = "Sphinx-3.5.4-py3-none-any.whl", hash = "sha256:2320d4e994a191f4b4be27da514e46b3d6b420f2ff895d064f52415d342461e8"},
-    {file = "Sphinx-3.5.4.tar.gz", hash = "sha256:19010b7b9fa0dc7756a6e105b2aacd3a80f798af3c25c273be64d7beeb482cb1"},
+    {file = "Sphinx-4.0.2-py3-none-any.whl", hash = "sha256:d1cb10bee9c4231f1700ec2e24a91be3f3a3aba066ea4ca9f3bbe47e59d5a1d4"},
+    {file = "Sphinx-4.0.2.tar.gz", hash = "sha256:b5c2ae4120bf00c799ba9b3699bc895816d272d120080fbc967292f29b52b48c"},
 ]
 sphinx-autodoc-typehints = [
     {file = "sphinx-autodoc-typehints-1.12.0.tar.gz", hash = "sha256:193617d9dbe0847281b1399d369e74e34cd959c82e02c7efde077fca908a9f52"},
