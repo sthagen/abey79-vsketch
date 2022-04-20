@@ -23,9 +23,11 @@ import vpype_cli
 from pnoise import Noise
 from shapely.geometry import Polygon
 
-from .curves import quadratic_bezier_path, quadratic_bezier_point, quadratic_bezier_tangent
+from .curves import cubic_bezier_path, cubic_bezier_point, cubic_bezier_tangent
 from .display import display
+from .easing import EASING_FUNCTIONS
 from .fill import generate_fill
+from .shape import Shape
 from .style import stylize_path
 from .utils import MatrixPopper, ResetMatrixContextManager, complex_to_2d, compute_ellipse_mode
 
@@ -46,8 +48,8 @@ class Vsketch:
         self._document = vp.Document(page_size=vp.convert_page_size("a3"))
         self._cur_stroke: Optional[int] = 1
         self._stroke_weight: int = 1
+        self._join_style: str = "round"
         self._cur_fill: Optional[int] = None
-        self._pipeline = ""
         self._figure = None
         self._transform_stack = [np.empty(shape=(3, 3), dtype=float)]
         self._center_on_page = True
@@ -57,8 +59,9 @@ class Vsketch:
         self._rect_mode = "corner"
         self._ellipse_mode = "center"
         self._random = random.Random()
-        self._random.seed(random.randint(0, 2 ** 31))
+        self._random.seed(random.randint(0, 2**31))
         self._noise = Noise()
+        self._text_mode = "transform"
         self.resetMatrix()
 
     @property
@@ -244,12 +247,34 @@ class Vsketch:
 
         Args:
             weight (strictly positive ``int``): number of plotted lines to use for strokes
-
         """
 
         if weight < 1:
             raise ValueError("width should be a strictly positive integer")
         self._stroke_weight = weight
+
+    def strokeJoin(self, join_style: str) -> None:
+        """Set the style of the joints that connects line segments.
+
+        Defines how joints between line segments are drawn when stroke weight is greater than
+        1. The available styles are ``"round"`` (default), ``"mitre"``, and ``"bevel"``.
+
+        .. seealso::
+
+            * :func:`stroke`
+            * :func:`strokeWeight`
+
+        Args:
+            join_style (``"round"``, ``"mitre"``, or ``"bevel"``): join style to use
+        """
+
+        if join_style not in ("round", "mitre", "bevel"):
+            raise ValueError(
+                f'incorrect join style "{join_style}", must be one of "round", "mitre", or '
+                '"bevel"'
+            )
+
+        self._join_style = join_style
 
     def fill(self, c: int) -> None:
         """Set the current fill color.
@@ -428,14 +453,18 @@ class Vsketch:
         """
 
         if isinstance(sx, str):
-            sx = vp.convert_length(sx)
+            scale_x = vp.convert_length(sx)
+        else:
+            scale_x = float(sx)
 
         if sy is None:
-            sy = sx
+            scale_y = scale_x
         elif isinstance(sy, str):
-            sy = vp.convert_length(sy)
+            scale_y = vp.convert_length(sy)
+        else:
+            scale_y = float(sy)
 
-        self.transform = self.transform @ np.diag([sx, sy, 1])
+        self.transform = self.transform @ np.diag([scale_x, scale_y, 1])
 
     def rotate(self, angle: float, degrees: bool = False) -> None:
         """Apply a rotation to the current transformation matrix.
@@ -695,6 +724,7 @@ class Vsketch:
                     weight=self._stroke_weight,
                     pen_width=self.strokePenWidth,
                     detail=self._detail,
+                    join_style="round",
                 )
             )
             self._document.add(lc, self._cur_stroke)
@@ -1015,25 +1045,32 @@ class Vsketch:
             return
 
         try:
-            if shape.geom_type in ["LineString", "LinearRing"]:
+            if shape.geom_type == "GeometryCollection":
+                for geom in shape.geoms:
+                    self.geometry(geom)
+            elif shape.geom_type in ["LineString", "LinearRing"]:
                 self.polygon(shape.coords)
             elif shape.geom_type == "MultiLineString":
-                for ls in shape:
+                for ls in shape.geoms:
                     self.polygon(ls.coords)
             elif shape.geom_type in ["Polygon", "MultiPolygon"]:
                 if shape.geom_type == "Polygon":
-                    shape = [shape]
-                for p in shape:
+                    geoms = [shape]
+                else:
+                    geoms = shape.geoms
+                for p in geoms:
                     self.polygon(
                         p.exterior.coords, holes=[hole.coords for hole in p.interiors]
                     )
             elif shape.geom_type in ["Point", "MultiPoint"]:
                 if shape.geom_type == "Point":
-                    shape = [shape]
-                for p in shape:
+                    geoms = [shape]
+                else:
+                    geoms = shape.geoms
+                for p in geoms:
                     self.point(p.x, p.y)
             else:
-                raise ValueError("unsupported Shapely geometry")
+                raise ValueError(f"unsupported Shapely geometry: {shape.geom_type}")
         except AttributeError:
             raise ValueError("the input must be a supported Shapely geometry")
 
@@ -1072,7 +1109,7 @@ class Vsketch:
             y4: Y coordinate of the second anchor point
         """
 
-        path = quadratic_bezier_path(x1, y1, x2, y2, x3, y3, x4, y4, self.epsilon)
+        path = cubic_bezier_path(x1, y1, x2, y2, x3, y3, x4, y4, self.epsilon)
         self._add_polygon(path)
 
     # noinspection PyMethodMayBeStatic
@@ -1097,7 +1134,7 @@ class Vsketch:
         Returns:
             evaluated coordinate on the bezier curve
         """
-        x, y = quadratic_bezier_point(a, 0, b, 0, c, 0, d, 0, t)
+        x, y = cubic_bezier_point(a, 0, b, 0, c, 0, d, 0, t)
         return x
 
     # noinspection PyMethodMayBeStatic
@@ -1119,8 +1156,46 @@ class Vsketch:
         Returns:
             evaluated tangent on the bezier curve
         """
-        x, y = quadratic_bezier_tangent(a, 0, b, 0, c, 0, d, 0, t)
+        x, y = cubic_bezier_tangent(a, 0, b, 0, c, 0, d, 0, t)
         return x
+
+    def createShape(self) -> Shape:
+        return Shape(self)
+
+    def shape(
+        self, shp: Shape, mask_lines: Optional[bool] = None, mask_points: Optional[bool] = None
+    ) -> None:
+        """Draw a shape.
+
+        Draw a shape, including its area, lines, and points. If a :meth:`fill` layer is active,
+        it is used for the area. Likewise, the current :meth:`penWidth` is used for points
+        (see :meth:`points`).
+
+        By default, the shape's lines and points are masked by the its area if a fill layer is
+        active (such as to avoid unwanted interaction with the hatch fill), and left unmasked
+        if not. This behaviour can be overridden using the ``mask_lines`` and ``mask_points``
+        parameters.
+
+        Args:
+            shp: the shape to draw
+            mask_lines: controls whether the shape's line are masked by its area (default:
+                True if fill active, otherwise False)
+            mask_points: controls whether the shape's points are masked by its area (default:
+                True if fill active, otherwise False)
+        """
+
+        if mask_lines is None:
+            mask_lines = self._cur_fill is not None
+        if mask_points is None:
+            mask_points = self._cur_fill is not None
+
+        # noinspection PyProtectedMember
+        area, lines, points = shp._compile(mask_lines, mask_points)
+
+        self.geometry(area)
+        self.geometry(lines)
+        for point in points.geoms:
+            self.point(point.x, point.y)
 
     def sketch(self, sub_sketch: "Vsketch") -> None:
         """Draw the content of another Vsketch.
@@ -1176,11 +1251,12 @@ class Vsketch:
                         weight=self._stroke_weight,
                         pen_width=self.strokePenWidth,
                         detail=self._detail,
+                        join_style=self._join_style,
                     )
                 )
             self._document.add(lc, self._cur_stroke)
 
-        if self._cur_fill:
+        if self._cur_fill and len(transformed_exterior) > 2:
             p = Polygon(
                 complex_to_2d(transformed_exterior),
                 holes=[complex_to_2d(hole) for hole in transformed_holes],
@@ -1246,13 +1322,13 @@ class Vsketch:
         """
 
         @vpype_cli.cli.command(group="vsketch")
-        @vp.global_processor
+        @vpype_cli.global_processor
         def vsketchinput(document):
             document.extend(self._document)
             return document
 
         @vpype_cli.cli.command(group="vsketch")
-        @vp.global_processor
+        @vpype_cli.global_processor
         def vsketchoutput(document):
             self._document = document
             return document
@@ -1401,43 +1477,50 @@ class Vsketch:
             _, ext = os.path.splitext(file.name if isinstance(file, TextIO) else file)
             format = ext.lstrip(".").lower()
 
-        if isinstance(file, str):
-            file = open(file, "w")
+        # inner function to accept only file-like object
+        def write_to_file(file_object):
+            nonlocal paper_size
 
-        if format == "svg":
-            vp.write_svg(
-                file,
-                self.document,
-                center=self._center_on_page,
-                color_mode=color_mode,
-                layer_label_format=layer_label,
-                source_string="Generated with vsketch",
-            )
-        elif format == "hpgl":
-            if device is None:
-                raise ValueError(f"'device' must be provided")
-            if paper_size is None:
-                config = vp.CONFIG_MANAGER.get_plotter_config(device)
-                paper_config = config.paper_config_from_size(self.document.page_size)
-                if paper_config:
-                    paper_size = paper_config.name
-                else:
-                    raise ValueError(f"page size is not available for device {device}")
+            if format == "svg":
+                vp.write_svg(
+                    file_object,
+                    self.document,
+                    center=self._center_on_page,
+                    color_mode=color_mode,
+                    layer_label_format=layer_label,
+                    source_string="Generated with vsketch",
+                )
+            elif format == "hpgl":
+                if device is None:
+                    raise ValueError(f"'device' must be provided")
+                if paper_size is None:
+                    config = vp.CONFIG_MANAGER.get_plotter_config(device)
+                    paper_config = config.paper_config_from_size(self.document.page_size)
+                    if paper_config:
+                        paper_size = paper_config.name
+                    else:
+                        raise ValueError(f"page size is not available for device {device}")
 
-            vp.write_hpgl(
-                file,
-                self.document,
-                page_size=paper_size,
-                landscape=self.document.page_size[0] > self.document.page_size[1],
-                center=self._center_on_page,
-                device=device,
-                velocity=velocity,
-                quiet=quiet,
-            )
-        else:
-            raise ValueError(
-                f"unknown format '{format}', specify format with 'format' argument "
-            )
+                vp.write_hpgl(
+                    file_object,
+                    self.document,
+                    page_size=paper_size,
+                    landscape=self.document.page_size[0] > self.document.page_size[1],
+                    center=self._center_on_page,
+                    device=device,
+                    velocity=velocity,
+                    quiet=quiet,
+                )
+            else:
+                raise ValueError(
+                    f"unknown format '{format}', specify format with 'format' argument "
+                )
+
+        try:
+            with open(file, "w") as fo:  # type: ignore
+                write_to_file(fo)
+        except TypeError:
+            write_to_file(file)
 
     ####################
     # RANDOM FUNCTIONS #
@@ -1673,7 +1756,7 @@ class Vsketch:
         start2: float,
         stop2: float,
     ) -> Union[float, np.ndarray]:
-        """Re-map a value from one range to the other.
+        """Map a value from one range to the other.
 
         Input values are not clamped. This function accept float or NumPy array, in which case
         it also returns a Numpy array.
@@ -1700,3 +1783,209 @@ class Vsketch:
         """
 
         return ((value - start1) * (stop2 - start2)) / (stop1 - start1) + start2
+
+    # noinspection PyNestedDecorators
+    @overload
+    @staticmethod
+    def easing(
+        value: float,
+        mode: str = ...,
+        start1: float = ...,
+        stop1: float = ...,
+        start2: float = ...,
+        stop2: float = ...,
+        low_dead: float = ...,
+        high_dead: float = ...,
+        param: float = ...,
+    ) -> float:
+        ...
+
+    # noinspection PyNestedDecorators
+    @overload
+    @staticmethod
+    def easing(
+        value: np.ndarray,
+        mode: str = ...,
+        start1: float = ...,
+        stop1: float = ...,
+        start2: float = ...,
+        stop2: float = ...,
+        low_dead: float = ...,
+        high_dead: float = ...,
+        param: float = ...,
+    ) -> np.ndarray:
+        ...
+
+    @staticmethod
+    def easing(
+        value: Union[float, np.ndarray],
+        mode: str = "linear",
+        start1: float = 0.0,
+        stop1: float = 1.0,
+        start2: float = 0.0,
+        stop2: float = 1.0,
+        low_dead: float = 0.0,
+        high_dead: float = 0.0,
+        param: float = 10,
+    ) -> Union[float, np.ndarray]:
+        """Map a value from one range to another, using an easing function.
+
+        Easing functions specify the rate of change of a parameter over time (or any other
+        input). This function provides a way to apply an easing function on a value.
+
+        The ``mode`` parameter specify the easing function to use. Check the ``easing`` example
+        for a list and a demo of all easing functions.
+
+        The input value may be a single float or a Numpy array of float.
+
+        Input values are clamped to ``[start1, stop1]`` and mapped to ``[start2, stop2]``.
+        Further, a lower and/or high dead zone can be specified as a fraction of the range
+        using ``low_dead`` and ``high_dead``. If ``delta = stop1 - start1``, the actual input
+        range is ``[start1 + low_dead * delta, stop1 - high_dead * delta]``.
+
+        The ``param`` argument is used by some easing functions.
+
+        Args:
+            value: input value(s)
+            mode: easing function to use
+            start1: start of the input range
+            stop1: end of the input range
+            start2: start of the output range
+            stop2: end of the output range
+            low_dead: lower dead zone (fraction of input range)
+            high_dead: higher dead zone (fraction of input range)
+            param: parameter use
+
+        Returns:
+            converted value(s)
+        """
+
+        input_low = start1 + low_dead * (stop1 - start1)
+        input_high = stop1 - high_dead * (stop1 - start1)
+        if input_low == input_high:
+            raise ValueError(f"invalid input span")
+        norm_value = np.clip((value - input_low) / (input_high - input_low), 0.0, 1.0)
+
+        if mode in EASING_FUNCTIONS:
+            out = EASING_FUNCTIONS[mode](norm_value, param)
+        else:
+            raise NotImplementedError(f"unknown easing function {mode}")
+
+        res = start2 + out * (stop2 - start2)
+        if getattr(res, "shape", None) == ():
+            res = float(res)
+        return res
+
+    ########
+    # TEXT #
+    ########
+
+    def textMode(self, mode: str) -> None:
+        """Controls how text is laid out.
+
+        There are two options for the text mode:
+          - "transform", where the font itself is subject to the current transform
+            matrix, including translation, scaling, rotation, skewing and flipping.
+          - "label", where the text is only scaled and translated using the current
+            transform matrix, but is not rotated, skewed or flipped.
+
+        .. seealso::
+
+            * :func:`text`
+
+        Args:
+            mode (``"transform"``, or ``"label"``): text layout mode to use.
+        """
+
+        if mode in ["label", "transform"]:
+            self._text_mode = mode
+        else:
+            raise ValueError("mode must be one of 'label', 'transform'")
+
+    def text(
+        self,
+        text: str,
+        x: float = 0.0,
+        y: float = 0.0,
+        *,
+        width: Optional[float] = None,
+        font: str = "futural",
+        size: Union[float, str] = "12pt",
+        mode: Optional[str] = None,
+        align: str = "left",
+        line_spacing: float = 1.0,
+        justify: bool = False,
+    ) -> None:
+        """Add text to your sketch!
+
+        This can add either lines or blocks of text to your sketch. The default is
+        to add a line of text, but if `width` is specified, then a block of text
+        will be created that width.
+
+        The fonts available are the same as those
+        `available from vpype <https://github.com/abey79/vpype/tree/master/vpype/fonts>`_.
+
+        A ``size`` of 1.0 means the maximum font height will be as long as a line 1.0
+        long (given current transform).
+
+        The ``mode`` here is special. There are two options for the mode:
+          - "transform", where the font itself is subject to the current transform
+            matrix, including translation, scaling, rotation, skewing and flipping.
+          - "label", where the text is only moved and scaled using the current
+            transform matrix, but is not rotated, skewed or flipped.
+
+        The text mode can also be set using :func:`textMode`.
+
+        ``align`` controls the text alignment, and can be "left", "right" or "center".
+
+        ``line_spacing`` and ``justify`` are only used when ``width`` is specified, and they
+        allow you to control the line spacing and justification of your block of text.
+
+        .. seealso::
+
+          - :func:`textMode`
+
+        Args:
+            text: text to add to the sketch
+            x: the x coordinate of the anchor point for the text. This sets either
+                the leftmost, rightmost, or centre point of the first line of
+                text, depending on the value of ``align``.
+            y: the y coordinate of the anchor point for the text. This sets the
+                centre line of the first line of text.
+            width: if given, wraps the text to this width and creates a text
+                block, not a text line. A text block may be multi-line.
+            size: the font size. It is highly recommended to give this as a float
+                (in document units) in "transform" mode, and an absolute size
+                such as "12pt" in "label" mode.
+            font: a vpype font
+            mode: "transform" or "label", see description for details.
+            align: "left", "right", or "center". See also `x` and `y` args.
+            line_spacing: Gives the line spacing for a text block, in multiples
+                of `size`. No effect without `width`.
+            justify: whether to justify the text block. No effect without `width`.
+
+        """
+
+        if mode is None:
+            mode = self._text_mode
+
+        size = vp.convert_length(size)
+
+        if width is None:
+            text_lc = vp.text_line(text, font, size, align=align)
+        else:
+            text_lc = vp.text_block(text, width, font, size, align, line_spacing, justify)
+
+        if mode == "transform":
+            # Move the text to the right place, and then apply the current
+            # transform.
+            text_lc.translate(x, y)
+            text_lc = vp.LineCollection([self._transform_line(line) for line in text_lc])
+        elif mode == "label":
+            # Then use a point to find out where to move the text to, given the
+            # current transformation.
+            location = self._transform_line(np.array([complex(x, y)]))
+            text_lc.translate(location.real, location.imag)
+
+        if self._cur_stroke is not None:
+            self._document.add(text_lc, self._cur_stroke)

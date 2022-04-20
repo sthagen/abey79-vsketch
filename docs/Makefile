@@ -14,6 +14,19 @@ help:
 
 .PHONY: help Makefile
 
+preview:
+	open _build/html/index.html
+
+clean:
+	rm -rf _build api
+
+
+install:
+	pip install -r requirements.txt
+
+live:
+	sphinx-autobuild . _build/html/
+
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile

@@ -4,7 +4,7 @@ import pathlib
 from typing import Any, Dict, Optional, Type
 
 import vpype_viewer
-import watchgod
+import watchfiles
 from PySide2.QtCore import QThread, Signal
 from PySide2.QtWidgets import (
     QLabel,
@@ -71,6 +71,7 @@ class SketchViewer(vpype_viewer.QtViewer):
         self._param_set: Dict[str, Any] = {}
         self._seed: Optional[int] = None
         self._thread: Optional[QThread] = None
+        self._stop_event = asyncio.Event()
 
         self._task = asyncio.get_event_loop().create_task(self.watch())
 
@@ -97,11 +98,16 @@ class SketchViewer(vpype_viewer.QtViewer):
         self.reload_sketch_class()
 
     def __del__(self):
+        self._stop_event.set()
         self._task.cancel()
 
     def set_seed(self, seed: int) -> None:
         self._seed = seed
         self.redraw_sketch()
+
+    def closeEvent(self, event):
+        self._stop_event.set()
+        self._task.cancel()
 
     def save_config(self, path: str) -> None:
         if self._sketch is None:
@@ -197,10 +203,13 @@ class SketchViewer(vpype_viewer.QtViewer):
 
     async def watch(self):
         try:
-            async for changes in watchgod.awatch(self._path):
+            async for changes in watchfiles.awatch(self._path, stop_event=self._stop_event):
                 # noinspection PyTypeChecker
                 for change in changes:
-                    if change[1] == str(self._path) and change[0] == watchgod.Change.modified:
+                    if (
+                        change[1] == str(self._path)
+                        and change[0] == watchfiles.Change.modified
+                    ):
                         # noinspection PyUnresolvedReferences
                         self.sketchFileChanged.emit()
         except asyncio.CancelledError:
